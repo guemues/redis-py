@@ -87,7 +87,7 @@ class Lock(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.release()
 
-    def acquire(self, blocking=None, blocking_timeout=None):
+    def acquire(self, blocking=None, blocking_timeout=None, token=None):
         """
         Use Redis to hold a shared, distributed lock named ``name``.
         Returns True once the lock is acquired.
@@ -99,7 +99,8 @@ class Lock(object):
         wait trying to acquire the lock.
         """
         sleep = self.sleep
-        token = b(uuid.uuid1().hex)
+        if token is None:
+            token = b(uuid.uuid1().hex)
         if blocking is None:
             blocking = self.blocking
         if blocking_timeout is None:
@@ -127,9 +128,11 @@ class Lock(object):
             return True
         return False
 
-    def release(self):
-        "Releases the already acquired lock"
-        expected_token = self.local.token
+    def release(self, expected_token=None):
+        " Releases the already acquired lock"
+        if expected_token is None:
+            expected_token = self.local.token
+
         if expected_token is None:
             raise LockError("Cannot release an unlocked lock")
         self.local.token = None
