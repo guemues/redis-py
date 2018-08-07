@@ -87,7 +87,7 @@ class Lock(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.release()
 
-    def acquire(self, blocking=None, blocking_timeout=None, token=None):
+    def acquire(self, token=None, blocking=None, blocking_timeout=None):
         """
         Use Redis to hold a shared, distributed lock named ``name``.
         Returns True once the lock is acquired.
