@@ -81,11 +81,11 @@ class Lock(object):
     def __enter__(self):
         # force blocking, as otherwise the user would have to check whether
         # the lock was actually acquired or not.
-        self.acquire(blocking=True)
+        self.acquire(token='WAITING', blocking=True)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.release()
+        self.release(token='WAITING')
 
     def acquire(self, token=None, blocking=None, blocking_timeout=None):
         """
@@ -128,22 +128,22 @@ class Lock(object):
             return True
         return False
 
-    def release(self, expected_token=None):
+    def release(self, token=None):
         " Releases the already acquired lock"
-        if expected_token is None:
-            expected_token = self.local.token
+        if token is None:
+            token = self.local.token
 
-        if expected_token is None:
+        if token is None:
             raise LockError("Cannot release an unlocked lock")
         self.local.token = None
-        self.do_release(expected_token)
+        self.do_release(token)
 
-    def do_release(self, expected_token):
+    def do_release(self, token):
         name = self.name
 
         def execute_release(pipe):
             lock_value = pipe.get(name)
-            if lock_value != expected_token:
+            if lock_value != token:
                 raise LockError("Cannot release a lock that's no longer owned")
             pipe.delete(name)
 
@@ -238,9 +238,9 @@ class LuaLock(Lock):
         if cls.lua_extend is None:
             cls.lua_extend = redis.register_script(cls.LUA_EXTEND_SCRIPT)
 
-    def do_release(self, expected_token):
+    def do_release(self, token):
         if not bool(self.lua_release(keys=[self.name],
-                                     args=[expected_token],
+                                     args=[token],
                                      client=self.redis)):
             raise LockError("Cannot release a lock that's no longer owned")
 
